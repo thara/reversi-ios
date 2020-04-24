@@ -195,6 +195,22 @@ extension GameState {
     func canPlaceDisk(_ disk: Disk, atX x: Int, y: Int) -> Bool {
         !flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y).isEmpty
     }
+    
+    /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
+    /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
+    func validMoves(for side: Disk) -> [(x: Int, y: Int)] {
+        var coordinates: [(Int, Int)] = []
+        
+        for y in boardView.yRange {
+            for x in boardView.xRange {
+                if canPlaceDisk(side, atX: x, y: y) {
+                    coordinates.append((x, y))
+                }
+            }
+        }
+        
+        return coordinates
+    }
 }
 
 enum FileIOError: Error {
