@@ -18,9 +18,6 @@ class ViewController: UIViewController {
     @IBOutlet private var countLabels: [UILabel]!
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
     
-    /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
-    private var turn: Disk? = .dark
-    
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
     
@@ -246,7 +243,7 @@ extension ViewController {
     
     /// プレイヤーの行動を待ちます。
     func waitForPlayer() {
-        guard let turn = self.turn else { return }
+        guard let turn = gameState.turn else { return }
         switch Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! {
         case .manual:
             break
@@ -259,16 +256,16 @@ extension ViewController {
     /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     func nextTurn() {
-        guard var turn = self.turn else { return }
+        guard var turn = gameState.turn else { return }
 
         turn.flip()
         
         if validMoves(for: turn).isEmpty {
             if validMoves(for: turn.flipped).isEmpty {
-                self.turn = nil
+                gameState.turn = nil
                 updateMessageViews()
             } else {
-                self.turn = turn
+                gameState.turn = turn
                 updateMessageViews()
                 
                 let alertController = UIAlertController(
@@ -282,7 +279,7 @@ extension ViewController {
                 present(alertController, animated: true)
             }
         } else {
-            self.turn = turn
+            gameState.turn = turn
             updateMessageViews()
             waitForPlayer()
         }
@@ -290,7 +287,7 @@ extension ViewController {
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playTurnOfComputer() {
-        guard let turn = self.turn else { preconditionFailure() }
+        guard let turn = gameState.turn else { preconditionFailure() }
         let (x, y) = validMoves(for: turn).randomElement()!
 
         playerActivityIndicators[turn.index].startAnimating()
@@ -327,7 +324,7 @@ extension ViewController {
     
     /// 現在の状況に応じてメッセージを表示します。
     func updateMessageViews() {
-        switch turn {
+        switch gameState.turn {
         case .some(let side):
             messageDiskSizeConstraint.constant = messageDiskSize
             messageDiskView.disk = side
@@ -385,7 +382,7 @@ extension ViewController {
             canceller.cancel()
         }
         
-        if !isAnimating, side == turn, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
+        if !isAnimating, side == gameState.turn, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
             playTurnOfComputer()
         }
     }
@@ -397,7 +394,7 @@ extension ViewController: BoardViewDelegate {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int) {
-        guard let turn = turn else { return }
+        guard let turn = gameState.turn else { return }
         if isAnimating { return }
         guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs

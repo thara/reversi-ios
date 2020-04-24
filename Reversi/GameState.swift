@@ -14,7 +14,8 @@ enum Player: Int {
 }
 
 class GameState {
-    private var turn: Disk? = .dark
+    /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
+    var turn: Disk? = .dark
     
     var boardView: BoardView!
     
