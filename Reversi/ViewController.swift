@@ -198,9 +198,7 @@ extension ViewController {
     
     /// ゲームの状態を初期化し、新しいゲームを開始します。
     func newGame() {
-        //TODO gameState.newGate()
-        boardView.reset()
-        turn = .dark
+        gameState.newGame()
         
         for playerControl in playerControls {
             playerControl.selectedSegmentIndex = Player.manual.rawValue

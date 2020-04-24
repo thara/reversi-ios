@@ -17,6 +17,7 @@ class GameState {
     /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
     var turn: Disk? = .dark
     
+    //FIXME Remove
     var boardView: BoardView!
     
     /// ゲームの状態を初期化し、新しいゲームを開始します。
@@ -24,7 +25,10 @@ class GameState {
         boardView.reset()
         turn = .dark
     }
-    
+}
+
+// MARK: Persistence
+extension GameState {
     /// ゲームの状態をファイルに書き出し、保存します。
     func saveGame(at path: String, players: [String]) throws {
         var output: String = ""
@@ -105,7 +109,12 @@ class GameState {
         
         return players.compactMap { $0 }
     }
-    
+}
+
+
+// MARK: Reversi logics
+
+extension GameState {
     /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
     /// - Parameter side: 数えるディスクの色です。
     /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
