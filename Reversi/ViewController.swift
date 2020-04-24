@@ -28,8 +28,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        gameState.boardView = boardView
-        
+        boardView.setUp(board: gameState.board)
         boardView.delegate = self
         messageDiskSize = messageDiskSizeConstraint.constant
         
@@ -63,7 +62,7 @@ extension ViewController {
     ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
     /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
     func placeDisk(_ disk: Disk, atX x: Int, y: Int, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
-        let diskCoordinates = gameState.flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y)
+        let diskCoordinates = gameState.board.flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y)
         if diskCoordinates.isEmpty {
             throw DiskPlacementError(disk: disk, x: x, y: y)
         }
@@ -86,9 +85,11 @@ extension ViewController {
         } else {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                self.boardView.setDisk(disk, atX: x, y: y, animated: false)
+                self.gameState.board.setDisk(disk, atX: x, y: y)
+                self.boardView.setDisk(disk, atX: x, y: y, on: self.gameState.board, animated: false)
                 for (x, y) in diskCoordinates {
-                    self.boardView.setDisk(disk, atX: x, y: y, animated: false)
+                    self.gameState.board.setDisk(disk, atX: x, y: y)
+                    self.boardView.setDisk(disk, atX: x, y: y, on: self.gameState.board, animated: false)
                 }
                 completion?(true)
                 try? self.saveGame()
@@ -109,15 +110,18 @@ extension ViewController {
             return
         }
         
+        gameState.board.setDisk(disk, atX: x, y: y)
+        
         let animationCanceller = self.animationCanceller!
-        boardView.setDisk(disk, atX: x, y: y, animated: true) { [weak self] isFinished in
+        boardView.setDisk(disk, atX: x, y: y, on: gameState.board, animated: true) { [weak self] isFinished in
             guard let self = self else { return }
             if animationCanceller.isCancelled { return }
             if isFinished {
                 self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
             } else {
                 for (x, y) in coordinates {
-                    self.boardView.setDisk(disk, atX: x, y: y, animated: false)
+                    self.gameState.board.setDisk(disk, atX: x, y: y)
+                    self.boardView.setDisk(disk, atX: x, y: y, on: self.gameState.board, animated: false)
                 }
                 completion(false)
             }
@@ -132,6 +136,7 @@ extension ViewController {
     /// ゲームの状態を初期化し、新しいゲームを開始します。
     func newGame() {
         gameState.newGame()
+        boardView.reset(board: gameState.board)
         
         for playerControl in playerControls {
             playerControl.selectedSegmentIndex = Player.manual.rawValue
@@ -162,8 +167,8 @@ extension ViewController {
 
         turn.flip()
         
-        if gameState.validMoves(for: turn).isEmpty {
-            if gameState.validMoves(for: turn.flipped).isEmpty {
+        if gameState.board.validMoves(for: turn).isEmpty {
+            if gameState.board.validMoves(for: turn.flipped).isEmpty {
                 gameState.turn = nil
                 updateMessageViews()
             } else {
@@ -190,7 +195,7 @@ extension ViewController {
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playTurnOfComputer() {
         guard let turn = gameState.turn else { preconditionFailure() }
-        let (x, y) = gameState.validMoves(for: turn).randomElement()!
+        let (x, y) = gameState.board.validMoves(for: turn).randomElement()!
 
         playerActivityIndicators[turn.index].startAnimating()
         
@@ -220,7 +225,7 @@ extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     func updateCountLabels() {
         for side in Disk.sides {
-            countLabels[side.index].text = "\(gameState.countDisks(of: side))"
+            countLabels[side.index].text = "\(gameState.board.countDisks(of: side))"
         }
     }
     
@@ -232,7 +237,7 @@ extension ViewController {
             messageDiskView.disk = side
             messageLabel.text = "'s turn"
         case .none:
-            if let winner = gameState.sideWithMoreDisks() {
+            if let winner = gameState.board.sideWithMoreDisks() {
                 messageDiskSizeConstraint.constant = messageDiskSize
                 messageDiskView.disk = winner
                 messageLabel.text = " won"

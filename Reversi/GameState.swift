@@ -17,12 +17,11 @@ class GameState {
     /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
     var turn: Disk? = .dark
     
-    //FIXME Remove
-    var boardView: BoardView!
+    var board = Board()
     
     /// ゲームの状態を初期化し、新しいゲームを開始します。
     func newGame() {
-        boardView.reset()
+        board.reset()
         turn = .dark
     }
 }
@@ -38,9 +37,9 @@ extension GameState {
         }
         output += "\n"
         
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                output += boardView.diskAt(x: x, y: y).symbol
+        for y in board.yRange {
+            for x in board.xRange {
+                output += board.diskAt(x: x, y: y).symbol
             }
             output += "\n"
         }
@@ -85,7 +84,7 @@ extension GameState {
         }
 
         do { // board
-            guard lines.count == boardView.height else {
+            guard lines.count == board.height else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             
@@ -94,122 +93,20 @@ extension GameState {
                 var x = 0
                 for character in line {
                     let disk = Disk?(symbol: "\(character)").flatMap { $0 }
-                    boardView.setDisk(disk, atX: x, y: y, animated: false)
+                    board.setDisk(disk, atX: x, y: y)
                     x += 1
                 }
-                guard x == boardView.width else {
+                guard x == board.width else {
                     throw FileIOError.read(path: path, cause: nil)
                 }
                 y += 1
             }
-            guard y == boardView.height else {
+            guard y == board.height else {
                 throw FileIOError.read(path: path, cause: nil)
             }
         }
         
         return players.compactMap { $0 }
-    }
-}
-
-
-// MARK: Reversi logics
-
-extension GameState {
-    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
-    /// - Parameter side: 数えるディスクの色です。
-    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
-    func countDisks(of side: Disk) -> Int {
-        var count = 0
-        
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                if boardView.diskAt(x: x, y: y) == side {
-                    count +=  1
-                }
-            }
-        }
-        
-        return count
-    }
-    
-    /// 盤上に置かれたディスクの枚数が多い方の色を返します。
-    /// 引き分けの場合は `nil` が返されます。
-    /// - Returns: 盤上に置かれたディスクの枚数が多い方の色です。引き分けの場合は `nil` を返します。
-    func sideWithMoreDisks() -> Disk? {
-        let darkCount = countDisks(of: .dark)
-        let lightCount = countDisks(of: .light)
-        if darkCount == lightCount {
-            return nil
-        } else {
-            return darkCount > lightCount ? .dark : .light
-        }
-    }
-    
-    func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, atX x: Int, y: Int) -> [(Int, Int)] {
-        let directions = [
-            (x: -1, y: -1),
-            (x:  0, y: -1),
-            (x:  1, y: -1),
-            (x:  1, y:  0),
-            (x:  1, y:  1),
-            (x:  0, y:  1),
-            (x: -1, y:  0),
-            (x: -1, y:  1),
-        ]
-        
-        guard boardView.diskAt(x: x, y: y) == nil else {
-            return []
-        }
-        
-        var diskCoordinates: [(Int, Int)] = []
-        
-        for direction in directions {
-            var x = x
-            var y = y
-            
-            var diskCoordinatesInLine: [(Int, Int)] = []
-            flipping: while true {
-                x += direction.x
-                y += direction.y
-                
-                switch (disk, boardView.diskAt(x: x, y: y)) { // Uses tuples to make patterns exhaustive
-                case (.dark, .some(.dark)), (.light, .some(.light)):
-                    diskCoordinates.append(contentsOf: diskCoordinatesInLine)
-                    break flipping
-                case (.dark, .some(.light)), (.light, .some(.dark)):
-                    diskCoordinatesInLine.append((x, y))
-                case (_, .none):
-                    break flipping
-                }
-            }
-        }
-        
-        return diskCoordinates
-    }
-    
-    /// `x`, `y` で指定されたセルに、 `disk` が置けるかを調べます。
-    /// ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要があります。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
-    func canPlaceDisk(_ disk: Disk, atX x: Int, y: Int) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y).isEmpty
-    }
-    
-    /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
-    /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
-    func validMoves(for side: Disk) -> [(x: Int, y: Int)] {
-        var coordinates: [(Int, Int)] = []
-        
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                if canPlaceDisk(side, atX: x, y: y) {
-                    coordinates.append((x, y))
-                }
-            }
-        }
-        
-        return coordinates
     }
 }
 
